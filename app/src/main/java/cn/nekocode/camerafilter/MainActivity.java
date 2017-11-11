@@ -65,8 +65,6 @@ public class MainActivity extends AppCompatActivity {
     private Button captureButton;
     private TextView tv_saved;
 
-    private ImageView imageView;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,7 +73,6 @@ public class MainActivity extends AppCompatActivity {
         Button captureButton = (Button) findViewById(R.id.capturebutton);
         final TextView tv_saved = (TextView) findViewById(R.id.text_tv);
 
-        imageView = (ImageView) findViewById(R.id.imageView);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
         {
@@ -97,8 +94,6 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View v) {
                         capture();
-                        Bitmap bitmap = textureView.getBitmap();
-                        imageView.setImageBitmap(bitmap);
                         Toast.makeText(getApplicationContext(),"capture", Toast.LENGTH_SHORT).show();
                     }
                 }
