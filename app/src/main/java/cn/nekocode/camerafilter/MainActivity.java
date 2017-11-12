@@ -63,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
     private TextureView textureView;
     private int filterId = R.id.filter0;
     private Button captureButton;
-    private TextView tv_saved;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,7 +70,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.main);
 
         Button captureButton = (Button) findViewById(R.id.capturebutton);
-        final TextView tv_saved = (TextView) findViewById(R.id.text_tv);
 
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
