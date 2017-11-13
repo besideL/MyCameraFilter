@@ -16,43 +16,29 @@
 package cn.nekocode.camerafilter;
 
 import android.Manifest;
-import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.MediaStore;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.TextureView;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Random;
+import java.nio.ByteBuffer;
 
 /**
  * @author nekocode (nekocode.cn@gmail.com)
@@ -72,8 +58,7 @@ public class MainActivity extends AppCompatActivity {
         Button captureButton = (Button) findViewById(R.id.capturebutton);
 
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
-        {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             // Should we show an explanation?
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA)) {
                 Toast.makeText(this, "Camera access is required.", Toast.LENGTH_SHORT).show();
@@ -91,8 +76,8 @@ public class MainActivity extends AppCompatActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        capture();
-                        Toast.makeText(getApplicationContext(),"capture", Toast.LENGTH_SHORT).show();
+                        Bitmap bitmap = textureView.getBitmap();
+                        new SaveImageTask().execute(bitmap);
                     }
                 }
         );
@@ -126,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
                         renderer.setSelectedFilter(R.id.filter0);
                         break;
 
-                        // 터치를 떼면 다시 선택된 필터를 적용
+                    // 터치를 떼면 다시 선택된 필터를 적용
                     case MotionEvent.ACTION_CANCEL:
                         renderer.setSelectedFilter(filterId);
                         break;
@@ -167,30 +152,91 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private void capture() {
-        String filename;
-        Date date = new Date(0);
-        SimpleDateFormat sdf = new SimpleDateFormat ("yyyyMMddHHmmss");
-        filename =  sdf.format(date);
+    private boolean capture() {
+        FileOutputStream outputStream = null;
 
-        try{
-            String path = Environment.getExternalStorageDirectory().toString();
-            OutputStream fOut = null;
-            File file = new File(path, "/DCIM/Signatures/"+filename+".jpg");
-            fOut = new FileOutputStream(file);
+        // create bitmap screen capture
+        Bitmap bitmap = textureView.getBitmap();
 
-            Bitmap bitmap = textureView.getBitmap();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut);
-            fOut.flush();
-            fOut.close();
+        // byte[]로 변환
+        byte[] byteArray = convertBitmapToByteArrayUncompressed(bitmap);
 
-            MediaStore.Images.Media.insertImage(getContentResolver()
-                    ,file.getAbsolutePath(),file.getName(),file.getName());
+        try {
+            File sdCard = Environment.getExternalStorageDirectory();
+            File dir = new File(sdCard.getAbsolutePath() + "/JonghoCam");
+            dir.mkdirs();
 
-        }catch (Exception e) {
+            String fileName = String.format("%d.jpg", System.currentTimeMillis());
+            File imageFile = new File(dir, fileName);
+
+            outputStream = new FileOutputStream(imageFile);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+            outputStream.flush();
+            outputStream.close();
+
+            refreshGallery(imageFile);
+
+        } catch (FileNotFoundException e) {
             e.printStackTrace();
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
         }
+
+        return true;
     }
 
+    public static byte[] convertBitmapToByteArrayUncompressed(Bitmap bitmap) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(bitmap.getByteCount());
+        bitmap.copyPixelsToBuffer(byteBuffer);
+        byteBuffer.rewind();
+        return byteBuffer.array();
+    }
 
+    private void refreshGallery(File file) {
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        mediaScanIntent.setData(Uri.fromFile(file));
+        sendBroadcast(mediaScanIntent);
+    }
+
+    private class SaveImageTask extends AsyncTask<Bitmap, Boolean, Boolean> {
+        @Override
+        protected Boolean doInBackground(Bitmap... bitmaps) {
+            FileOutputStream outputStream = null;
+
+            try {
+                File sdCard = Environment.getExternalStorageDirectory();
+                File dir = new File(sdCard.getAbsolutePath() + "/JonghoCam");
+                dir.mkdirs();
+
+                String fileName = String.format("%d.jpg", System.currentTimeMillis());
+                File imageFile = new File(dir, fileName);
+
+                outputStream = new FileOutputStream(imageFile);
+
+                bitmaps[0].compress(Bitmap.CompressFormat.PNG, 0, outputStream);
+                outputStream.flush();
+                outputStream.close();
+                refreshGallery(imageFile);
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                return false;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean aBoolean) {
+            if ( aBoolean == false ) {
+                Toast.makeText(MainActivity.this , "save failed!", Toast.LENGTH_SHORT ).show();
+            } else {
+                Toast.makeText(MainActivity.this , "save succes!", Toast.LENGTH_SHORT ).show();
+            }
+        }
+    }
 }
